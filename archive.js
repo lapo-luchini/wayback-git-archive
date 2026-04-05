@@ -1,4 +1,3 @@
-const axios = require('axios');
 const fs = require('fs').promises;
 const fsConstants = require('fs').constants;
 const path = require('path');
@@ -89,8 +88,11 @@ async function getSnapshots(url, fromDate = null) {
     }
 
     try {
-        const response = await axios.get(cdxUrl);
-        const data = response.data;
+        const response = await fetch(cdxUrl);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
 
         if (!data || data.length < 2) return [];
 
@@ -224,16 +226,22 @@ async function main() {
 
         try {
             // Download content
-            const response = await axios.get(snap.downloadUrl, {
-                responseType: 'arraybuffer',
+            const response = await fetch(snap.downloadUrl, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaybackGitArchiver/1.0)' },
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Read raw array buffer
+            const buffer = await response.arrayBuffer();
 
             // Ensure directory exists
             await fs.mkdir(path.dirname(fullPath), { recursive: true });
 
-            // Write file
-            await fs.writeFile(fullPath, response.data);
+            // Write file (convert ArrayBuffer to Buffer)
+            await fs.writeFile(fullPath, Buffer.from(buffer));
 
             // Git Add
             await git.add(snap.filePath);
