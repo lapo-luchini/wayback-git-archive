@@ -14,7 +14,7 @@ const BASE_URL = 'https://www.example.com';
 const PAGES = ['/', '/about', '/contact'];
 
 // Directory where the git repository will be created
-const REPO_DIR = './archive_repo';
+const REPO_DIR = './repo';
 
 // Git Author Details
 const GIT_AUTHOR = {
@@ -140,10 +140,10 @@ async function initializeRepo(git, repoDir) {
 This repository is an automated archive of web pages from the Wayback Machine.
 
 **Source Base URL:** ${BASE_URL}
-**Generated on:** ${moment().format('LLLL')}
+**Generated on:** ${moment().format('YYYY-MM-DDTHH:mm:ssZ')}
 
 ## Pages Archived
- ${PAGES.map((p) => `- ${p}`).join('\n')}
+${PAGES.map((p) => `- ${p}`).join('\n')}
 `;
         await fs.writeFile(readmePath, content);
         await git.add('README.md');
