@@ -17,14 +17,14 @@ const REPO_DIR = './wayback_history';
 // Git Author Details
 const GIT_AUTHOR = {
     name: 'Wayback Archiver',
-    email: 'archiver@localhost'
+    email: 'archiver@localhost',
 };
 
 // Rate limiting delay (ms) between requests to be polite to the API
-const REQUEST_DELAY = 1000; 
+const REQUEST_DELAY = 1000;
 // =================================================
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Sanitize a URL to create a valid filesystem path.
@@ -40,7 +40,7 @@ function urlToFilePath(url) {
         if (pathname.endsWith('/')) {
             pathname = pathname.slice(0, -1);
         }
-        
+
         // If path is empty, use index.html
         if (!pathname) {
             pathname = '/index.html';
@@ -56,10 +56,10 @@ function urlToFilePath(url) {
 
         // Sanitize query parameters
         let query = parsed.search.replace(/\?/g, '_').replace(/=/g, '_').replace(/&/g, '_');
-        
+
         // Combine
         let fullPath = path.join(base, pathname);
-        
+
         // Append query string if present (sanitized)
         if (query && query !== '_') {
             // Remove extension, add query, re-add extension
@@ -81,7 +81,7 @@ function urlToFilePath(url) {
  */
 async function getSnapshots(url) {
     const cdxUrl = `http://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(url)}&output=json&fl=timestamp,original,statuscode&mimetype=text/html&filter=statuscode:200`;
-    
+
     try {
         const response = await axios.get(cdxUrl);
         const data = response.data;
@@ -89,10 +89,10 @@ async function getSnapshots(url) {
         if (!data || data.length < 2) return [];
 
         // First row is header ['timestamp', 'original', ...], skip it
-        return data.slice(1).map(row => ({
+        return data.slice(1).map((row) => ({
             timestamp: row[0],
             originalUrl: row[1],
-            statuscode: row[2]
+            statuscode: row[2],
         }));
     } catch (error) {
         console.error(`Error fetching CDX for ${url}: ${error.message}`);
@@ -105,14 +105,14 @@ async function getSnapshots(url) {
  */
 async function main() {
     console.log(`Initializing repository at ${REPO_DIR}...`);
-    
+
     // Ensure directory exists
     await fs.mkdir(REPO_DIR, { recursive: true });
-    
+
     // Initialize Git
     const git = simpleGit(REPO_DIR);
     let isRepo = false;
-    
+
     try {
         isRepo = await git.checkIsRepo();
     } catch (e) {
@@ -129,8 +129,8 @@ async function main() {
     for (const url of URLS) {
         console.log(`Fetching snapshot list for ${url}...`);
         const snapshots = await getSnapshots(url);
-        
-        snapshots.forEach(s => {
+
+        snapshots.forEach((s) => {
             // Construct URL to download the raw content (id_ prefix)
             s.downloadUrl = `https://web.archive.org/web/${s.timestamp}id_/${s.originalUrl}`;
             allSnapshots.push(s);
@@ -146,10 +146,10 @@ async function main() {
     // Process each snapshot
     for (let i = 0; i < allSnapshots.length; i++) {
         const snap = allSnapshots[i];
-        const dateStr = moment(snap.timestamp, "YYYYMMDDHHmmss").format();
-        const dateTimestamp = moment(snap.timestamp, "YYYYMMDDHHmmss").toDate();
+        const dateStr = moment(snap.timestamp, 'YYYYMMDDHHmmss').format();
+        const dateTimestamp = moment(snap.timestamp, 'YYYYMMDDHHmmss').toDate();
 
-        console.log(`[${i+1}/${allSnapshots.length}] Processing ${snap.timestamp} for ${snap.originalUrl}`);
+        console.log(`[${i + 1}/${allSnapshots.length}] Processing ${snap.timestamp} for ${snap.originalUrl}`);
 
         const relativePath = urlToFilePath(snap.originalUrl);
         if (!relativePath) continue;
@@ -158,9 +158,9 @@ async function main() {
 
         try {
             // Download content
-            const response = await axios.get(snap.downloadUrl, { 
+            const response = await axios.get(snap.downloadUrl, {
                 responseType: 'arraybuffer',
-                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaybackGitArchiver/1.0)' }
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; WaybackGitArchiver/1.0)' },
             });
 
             // Ensure directory exists
@@ -176,11 +176,11 @@ async function main() {
             // We use raw arguments to set the date specifically
             // Format: git commit --date="YYYY-MM-DD HH:mm:ss" --author="Name <email>"
             const commitMessage = `Snapshot: ${snap.originalUrl} at ${snap.timestamp}`;
-            
+
             try {
                 await git.commit(commitMessage, null, {
                     '--date': dateStr,
-                    '--author': `${GIT_AUTHOR.name} <${GIT_AUTHOR.email}>`
+                    '--author': `${GIT_AUTHOR.name} <${GIT_AUTHOR.email}>`,
                 });
             } catch (commitErr) {
                 // simple-git throws if there is nothing to commit
@@ -190,7 +190,6 @@ async function main() {
                     throw commitErr;
                 }
             }
-
         } catch (err) {
             console.error(`  -> Failed to process snapshot: ${err.message}`);
         }
@@ -198,10 +197,10 @@ async function main() {
         await sleep(REQUEST_DELAY);
     }
 
-    console.log("Archiving complete.");
+    console.log('Archiving complete.');
 }
 
-main().catch(err => {
-    console.error("Fatal Error:", err);
+main().catch((err) => {
+    console.error('Fatal Error:', err);
     process.exit(1);
 });
