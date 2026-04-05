@@ -11,7 +11,7 @@ const BASE_URL = 'https://www.example.com';
 
 // List of relative pages within the base URL
 // Leave as ['/'] for just the homepage
-const PAGES = ['/', '/about', '/contact', '/blog'];
+const PAGES = ['/', '/about', '/contact'];
 
 // Directory where the git repository will be created
 const REPO_DIR = './archive_repo';
@@ -106,20 +106,36 @@ async function getSnapshots(url, fromDate = null) {
 }
 
 /**
- * Initialize Repo and create README if it doesn't exist
+ * Initialize Repo with strict isolation and local config
  */
 async function initializeRepo(git, repoDir) {
-    const readmePath = path.join(repoDir, 'README.md');
+    const gitDir = path.join(repoDir, '.git');
+    let needsInit = false;
 
+    // Strictly check if .git directory exists inside the target folder
     try {
-        await fs.access(readmePath, fsConstants.F_OK);
-        // README exists, assume repo is initialized
-        return false;
+        await fs.access(gitDir, fsConstants.F_OK);
     } catch (e) {
-        // README does not exist, create it
+        needsInit = true;
     }
 
-    const content = `# Wayback Machine Archive
+    if (needsInit) {
+        console.log(`Initializing new repository in ${repoDir}...`);
+
+        // Initialize the repo
+        await git.init();
+
+        // ISOLATION: Set local config to override global environment settings
+        // This prevents issues with global user.name, emails, and GPG signing
+        console.log('Applying local git configuration to ignore environment settings...');
+        await git.addConfig('user.name', GIT_AUTHOR.name);
+        await git.addConfig('user.email', GIT_AUTHOR.email);
+        await git.addConfig('commit.gpgsign', 'false'); // Disable signature requirement
+        await git.addConfig('init.defaultBranch', 'main'); // Ensure consistent branch name
+
+        // Create README
+        const readmePath = path.join(repoDir, 'README.md');
+        const content = `# Wayback Machine Archive
 
 This repository is an automated archive of web pages from the Wayback Machine.
 
@@ -129,17 +145,17 @@ This repository is an automated archive of web pages from the Wayback Machine.
 ## Pages Archived
  ${PAGES.map((p) => `- ${p}`).join('\n')}
 `;
-
-    await fs.writeFile(readmePath, content);
-    await git.add('README.md');
-
-    // Commit with current date
-    await git.commit('Initial commit: README', null, {
-        '--author': `${GIT_AUTHOR.name} <${GIT_AUTHOR.email}>`,
-    });
-
-    console.log('Created initial README.md commit.');
-    return true;
+        await fs.writeFile(readmePath, content);
+        await git.add('README.md');
+        await git.commit('Initial commit: README');
+        console.log('Repository initialized and README created.');
+    } else {
+        // Verify config if repo exists (ensure GPG is off for this repo if we run commits)
+        // We set it again just to be safe, it overrides global config for this repo only.
+        await git.addConfig('commit.gpgsign', 'false');
+        await git.addConfig('user.name', GIT_AUTHOR.name);
+        await git.addConfig('user.email', GIT_AUTHOR.email);
+    }
 }
 
 /**
@@ -151,21 +167,10 @@ async function main() {
     // Ensure directory exists
     await fs.mkdir(REPO_DIR, { recursive: true });
 
-    // Initialize Git
+    // Initialize Git pointing specifically to REPO_DIR
     const git = simpleGit(REPO_DIR);
-    let isRepo = false;
 
-    try {
-        isRepo = await git.checkIsRepo();
-    } catch (e) {
-        isRepo = false;
-    }
-
-    if (!isRepo) {
-        await git.init();
-    }
-
-    // Initialize README if needed
+    // Initialize or verify repository
     await initializeRepo(git, REPO_DIR);
 
     // Collect all snapshots across all URLs first
@@ -191,7 +196,7 @@ async function main() {
                 // Construct URL to download the raw content (id_ prefix)
                 s.downloadUrl = `https://web.archive.org/web/${s.timestamp}id_/${s.originalUrl}`;
                 s.filePath = filePath;
-                s.pagePath = page; // For cleaner commit messages
+                s.pagePath = page;
                 allSnapshots.push(s);
             });
         }
@@ -238,12 +243,13 @@ async function main() {
             const commitMessage = `Snapshot: ${snap.pagePath} at ${snap.timestamp}`;
 
             try {
+                // Commit using local config (already set) + explicit date
                 await git.commit(commitMessage, null, {
                     '--date': dateStr,
-                    '--author': `${GIT_AUTHOR.name} <${GIT_AUTHOR.email}>`,
+                    // We don't need --author here because we forced user.name/email in local config
+                    // However, adding it again doesn't hurt safety.
                 });
             } catch (commitErr) {
-                // simple-git throws if there is nothing to commit
                 if (commitErr.message.includes('nothing to commit')) {
                     console.log(`  -> Skipped (No changes from previous snapshot)`);
                 } else {
