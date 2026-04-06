@@ -6,6 +6,7 @@ A NodeJS script to archive the history of a website from the Wayback Machine int
 
 *   **Chronological History**: Commits are dated to match the exact time the Wayback Machine took the snapshot.
 *   **Incremental Updates**: If you run the script again, it only fetches new snapshots since the last update, preserving the existing history.
+*   **Reproducible History**: Every time you run the script, it will create the same commit hashes.
 *   **Environment Isolation**: Works independently of your global Git configuration (ignores global usernames, signatures, etc.) to ensure a clean repository.
 *   **Clean Structure**: Strips the base URL from file paths and commit messages, focusing on the relative page structure.
 *   **Automated README**: Generates a `README.md` in the archive repository with the source URL and generation date.
@@ -77,6 +78,7 @@ A NodeJS script to archive the history of a website from the Wayback Machine int
 | `REPO_DIR` | The local folder where the Git repository will be created. |
 | `GIT_AUTHOR` | The name and email used for the Git commits. |
 | `REQUEST_DELAY` | Delay in milliseconds between requests to avoid rate limiting. |
+| `FIRST_COMMIT_DATE` | ISO-860-1 date of the first commit (the one with the README). Should be fixed if reproducible hashes are wanted. |
 
 ## Output Example
 
