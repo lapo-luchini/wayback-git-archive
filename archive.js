@@ -2,7 +2,6 @@ const fs = require('fs').promises;
 const fsConstants = require('fs').constants;
 const path = require('path');
 const simpleGit = require('simple-git');
-const moment = require('moment');
 
 // ================= CONFIGURATION =================
 // The base URL (will be stripped from paths in commits)
@@ -82,9 +81,7 @@ async function getSnapshots(url, fromDate = null) {
     let cdxUrl = `http://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(url)}&output=json&fl=timestamp,original,statuscode&mimetype=text/html&filter=statuscode:200`;
 
     if (fromDate) {
-        // Wayback timestamp format is YYYYMMDDHHmmss
-        const waybackDate = moment(fromDate).utc().format('YYYYMMDDHHmmss');
-        cdxUrl += `&from=${waybackDate}`;
+        cdxUrl += `&from=${fromDate}`;
     }
 
     try {
@@ -217,7 +214,15 @@ async function main() {
     // Process each snapshot
     for (let i = 0; i < allSnapshots.length; i++) {
         const snap = allSnapshots[i];
-        const dateStr = moment(snap.timestamp, 'YYYYMMDDHHmmss').format();
+        // Convert Wayback timestamp (YYYYMMDDHHmmss) to ISO 8601 UTC string directly
+        const ts = snap.timestamp;
+        const year = ts.substring(0, 4);
+        const month = ts.substring(4, 6);
+        const day = ts.substring(6, 8);
+        const hour = ts.substring(8, 10);
+        const minute = ts.substring(10, 12);
+        const second = ts.substring(12, 14);
+        const dateStr = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
 
         console.log(`[${i + 1}/${allSnapshots.length}] Processing ${snap.timestamp} for ${snap.pagePath}`);
 
