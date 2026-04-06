@@ -22,6 +22,9 @@ const GIT_AUTHOR = {
 
 // Rate limiting delay (ms) between requests to be polite to the API
 const REQUEST_DELAY = 1000;
+
+// First commit date, to have reproducible commit hashes
+const FIRST_COMMIT_DATE = '2026-04-05T18:19:22Z'; // this is the date the project was created
 // =================================================
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -170,7 +173,13 @@ ${PAGES.map((p) => `- ${p}`).join('\n')}
 `;
         await fs.writeFile(readmePath, content);
         await git.add('README.md');
-        await git.commit('Initial commit: README');
+        await git
+            .env({
+                PATH: process.env.PATH,
+                GIT_AUTHOR_DATE: FIRST_COMMIT_DATE,
+                GIT_COMMITTER_DATE: FIRST_COMMIT_DATE,
+            })
+            .commit('Initial commit: README');
         console.log('Repository initialized and README created.');
     } else {
         // Verify config if repo exists (ensure GPG is off for this repo if we run commits)
@@ -273,11 +282,13 @@ async function main() {
 
             try {
                 // Commit using local config (already set) + explicit date
-                await git.commit(commitMessage, null, {
-                    '--date': dateStr,
-                    // We don't need --author here because we forced user.name/email in local config
-                    // However, adding it again doesn't hurt safety.
-                });
+                await git
+                    .env({
+                        PATH: process.env.PATH,
+                        GIT_AUTHOR_DATE: dateStr,
+                        GIT_COMMITTER_DATE: dateStr,
+                    })
+                    .commit(commitMessage);
             } catch (commitErr) {
                 if (commitErr.message.includes('nothing to commit')) {
                     console.log(`  -> Skipped (No changes from previous snapshot)`);
