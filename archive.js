@@ -55,6 +55,19 @@ function pageToFilePath(relativeUrl) {
 }
 
 /**
+ * Convert Wayback timestamp (YYYYMMDDHHmmss) to ISO 8601 UTC string directly.
+ */
+function waybackToISO(ts) {
+    const year = ts.substring(0, 4);
+    const month = ts.substring(4, 6);
+    const day = ts.substring(6, 8);
+    const hour = ts.substring(8, 10);
+    const minute = ts.substring(10, 12);
+    const second = ts.substring(12, 14);
+    return `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
+}
+
+/**
  * Get the ISO date of the last commit for a specific file.
  * Returns null if the file has no history.
  */
@@ -214,15 +227,7 @@ async function main() {
     // Process each snapshot
     for (let i = 0; i < allSnapshots.length; i++) {
         const snap = allSnapshots[i];
-        // Convert Wayback timestamp (YYYYMMDDHHmmss) to ISO 8601 UTC string directly
-        const ts = snap.timestamp;
-        const year = ts.substring(0, 4);
-        const month = ts.substring(4, 6);
-        const day = ts.substring(6, 8);
-        const hour = ts.substring(8, 10);
-        const minute = ts.substring(10, 12);
-        const second = ts.substring(12, 14);
-        const dateStr = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
+        const dateStr = waybackToISO(snap.timestamp);
 
         console.log(`[${i + 1}/${allSnapshots.length}] Processing ${snap.timestamp} for ${snap.pagePath}`);
 
