@@ -141,8 +141,7 @@ async function initializeRepo(git, repoDir) {
 
 This repository is an automated archive of web pages from the Wayback Machine.
 
-**Source Base URL:** ${BASE_URL}
-**Generated on:** ${moment().format('YYYY-MM-DDTHH:mm:ssZ')}
+Source Base URL: \`${BASE_URL}\`
 
 ## Pages Archived
 ${PAGES.map((p) => `- ${p}`).join('\n')}
