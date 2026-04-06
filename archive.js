@@ -5,11 +5,11 @@ const simpleGit = require('simple-git');
 
 // ================= CONFIGURATION =================
 // The base URL (will be stripped from paths in commits)
-const BASE_URL = 'https://www.example.com';
+const BASE_URL = 'https://www.mrob.com/pub/comp/hypercalc';
 
 // List of relative pages within the base URL
 // Leave as ['/'] for just the homepage
-const PAGES = ['/', '/about', '/contact'];
+const PAGES = ['/hypercalc-javascript.html', '/hypercalc.txt'];
 
 // Directory where the git repository will be created
 const REPO_DIR = './repo';
