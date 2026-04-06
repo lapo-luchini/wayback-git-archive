@@ -68,6 +68,15 @@ function waybackToISO(ts) {
 }
 
 /**
+ * Convert ISO 8601 UTC string to Wayback timestamp (YyyyMmDdHhMmSs).
+ * Accepts strings like '2023-04-15T12:34:56Z' or '2023-04-15T12:34:56.789Z'
+ * and returns a 14-digit timestamp string (e.g., '20230415123456').
+ */
+function isoToWayback(isoStr) {
+    return isoStr.slice(0, 19).replace(/[-T:]/g, '');
+}
+
+/**
  * Get the ISO date of the last commit for a specific file.
  * Returns null if the file has no history.
  */
@@ -76,7 +85,7 @@ async function getLastCommitDate(git, filePath) {
         // We use raw git log command to get the date of the latest commit for this file
         const log = await git.raw(['log', '-1', '--format=%aI', '--', filePath]);
         if (log && log.trim()) {
-            return log.trim();
+            return isoToWayback(log.trim());
         }
         return null;
     } catch (error) {
@@ -91,11 +100,7 @@ async function getLastCommitDate(git, filePath) {
  */
 async function getSnapshots(url, fromDate = null) {
     // Construct CDX URL
-    let cdxUrl = `http://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(url)}&output=json&fl=timestamp,original,statuscode&mimetype=text/html&filter=statuscode:200`;
-
-    if (fromDate) {
-        cdxUrl += `&from=${fromDate}`;
-    }
+    const cdxUrl = `http://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(url)}&output=json&fl=timestamp,original,statuscode&mimetype=text/html&filter=statuscode:200`;
 
     try {
         const response = await fetch(cdxUrl);
@@ -107,10 +112,17 @@ async function getSnapshots(url, fromDate = null) {
         if (!data || data.length < 2) return [];
 
         // First row is header ['timestamp', 'original', ...], skip it
-        return data.slice(1).map((row) => ({
+        let snapshots = data.slice(1).map((row) => ({
             timestamp: row[0],
             originalUrl: row[1],
         }));
+
+        // Filter by fromDate if provided: only keep timestamps > fromDate (lexicographically)
+        if (fromDate) {
+            snapshots = snapshots.filter((snap) => snap.timestamp > fromDate);
+        }
+
+        return snapshots;
     } catch (error) {
         console.error(`Error fetching CDX for ${url}: ${error.message}`);
         return [];
